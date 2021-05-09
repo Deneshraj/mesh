@@ -25,6 +25,10 @@ ThemeData lightThemeData(BuildContext context) {
       selectedIconTheme: IconThemeData(color: kPrimaryColor),
       showUnselectedLabels: true,
     ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: kSecondaryColor,
+      foregroundColor: Colors.white,
+    ),
   );
 }
 
@@ -48,10 +52,19 @@ ThemeData darkThemeData(BuildContext context) {
       selectedIconTheme: IconThemeData(color: kPrimaryColor),
       showUnselectedLabels: true,
     ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: kSecondaryColor,
+      foregroundColor: Colors.white,
+    ),
   );
 }
 
 final appBarTheme = AppBarTheme(
   centerTitle: true,
   elevation: 0,
+  textTheme: TextTheme(
+    headline5: TextStyle(
+      color: Colors.white,
+    ),
+  ),
 );

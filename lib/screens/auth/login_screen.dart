@@ -1,13 +1,16 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mesh/screens/auth/components/bottom_row.dart';
 import 'package:mesh/screens/auth/components/login_input.dart';
 import 'package:mesh/screens/auth/components/password_input.dart';
+import 'package:mesh/screens/chats/chats.dart';
 import 'package:mesh/screens/components/rounded_button.dart';
 import 'package:mesh/utils/snackbar.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../constants.dart';
 
@@ -23,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   TextEditingController _emailController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
 
-  void toggleLogin() {
+  void _toggleLogin() {
     setState(() {
       _isLogin = !_isLogin;
     });
@@ -53,7 +56,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       var _url = Uri.parse("$url/api/auth/");
-      print("Sending Request");
       var response = await client.post(
         _url,
         headers: {"Content-Type": "application/json"},
@@ -65,8 +67,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         var body = jsonDecode(response.body);
-        showSnackbar(context, body['msg']);
-      } else if(response.statusCode == 404) {
+        var token = body['token'];
+
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        final res = await prefs.setString('auth_token', token['auth_token']);
+
+        if (res) {
+          showSnackbar(context, body['msg']);
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (BuildContext context) => ChatsScreen()),
+            ModalRoute.withName('/'),
+          );
+        }
+      } else if (response.statusCode == 404) {
         showSnackbar(context, "User not found with that Email");
       } else {
         showSnackbar(context, "Server Down!");
@@ -97,11 +111,14 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200) {
         var body = jsonDecode(response.body);
         showSnackbar(context, body['msg']);
+        _toggleLogin();
       } else {
-        showSnackbar(context, "Server Down!");
+        showSnackbar(context, "Error at Server");
       }
+    } on SocketException {
+      showSnackbar(context, "Unable to communicate with server!");
     } catch (e) {
-      print(e);
+      print("Exception $e");
       showSnackbar(context, "Something went wrong!");
     }
   }
@@ -171,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   : "Already have an account?",
               btnText: (_isLogin) ? "Sign up" : "Login",
               onPressed: () {
-                toggleLogin();
+                _toggleLogin();
               }),
         ],
       ),
