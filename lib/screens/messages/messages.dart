@@ -5,6 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mesh/constants.dart';
 import 'package:mesh/utils/functions.dart';
 import 'package:mesh/utils/requests.dart';
+import 'package:mesh/utils/snackbar.dart';
+import 'package:mesh/utils/stream_socket.dart';
+import 'package:socket_io_client/socket_io_client.dart';
 
 class MessageScreen extends StatefulWidget {
   final String id;
@@ -20,6 +23,28 @@ class _MessageScreenState extends State<MessageScreen> {
   List _chats = [];
   bool _isLoaded = false;
   TextEditingController _inputController = TextEditingController();
+  Socket socket;
+  // StreamSocket _streamSocket = StreamSocket();
+
+  @override
+  void initState() {
+    super.initState();
+    setState(() {
+      socket = _socketConn();
+    });
+  }
+
+  Socket _socketConn() {
+    Socket socket = io(sioUrl, <String, dynamic>{
+      "transports": ["websocket"],
+      "autoConnect": false,
+    });
+    socket.connect();
+    socket.onConnect((data) => print("Connected!"));
+    socket.onConnectTimeout((data) => print("Timeout! $data"));
+    socket.onDisconnect((data) => "Disconnecting...");
+    return socket;
+  }
 
   _getChats() async {
     bool res = await sendAuthorizedReq(
@@ -48,22 +73,29 @@ class _MessageScreenState extends State<MessageScreen> {
   }
 
   _sendChat() async {
-    sendAuthorizedReq(
-      func: (token) async {
-        var response = await post(
-            Uri.parse("$url/api/chats/add/"),
-            token,
-            jsonEncode({
-              'message': _inputController.text,
-              'to_user': widget.id,
-            }));
-        var body = jsonDecode(response.body);
-        setState(() {
-          _chats.add(body['chat']);
-          _inputController.text = "";
-        });
-      },
-    );
+    if (_inputController.text.isNotEmpty) {
+      if (socket != null) {
+        socket.emit('addChat', _inputController.text);
+      }
+      // sendAuthorizedReq(
+      //   func: (token) async {
+      //     var response = await post(
+      //         Uri.parse("$url/api/chats/add/"),
+      //         token,
+      //         jsonEncode({
+      //           'message': _inputController.text,
+      //           'to_user': widget.id,
+      //         }));
+      //     var body = jsonDecode(response.body);
+      //     setState(() {
+      //       _chats.add(body['chat']);
+      //       _inputController.text = "";
+      //     });
+      //   },
+      // );
+    } else {
+      showSnackbar(context, "Enter any message");
+    }
   }
 
   @override
@@ -85,6 +117,15 @@ class _MessageScreenState extends State<MessageScreen> {
         ),
         elevation: 0,
         centerTitle: true,
+        leading: IconButton(
+          padding: EdgeInsets.only(left: 30),
+          icon: Icon(
+            Icons.arrow_back_ios,
+          ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
         actions: <Widget>[
           Icon(Icons.search),
           SizedBox(width: 20),
@@ -131,7 +172,7 @@ class _MessageScreenState extends State<MessageScreen> {
                     child: Container(
                       padding: EdgeInsets.only(left: 20),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(50),
                         color: kPrimaryColor.withAlpha(30),
                       ),
                       child: TextField(
@@ -150,19 +191,18 @@ class _MessageScreenState extends State<MessageScreen> {
                       ),
                     ),
                   ),
+                  SizedBox(width: 20),
                   ElevatedButton(
                     onPressed: () {
-                      String text = _inputController.text;
                       _sendChat();
                     },
                     style: ButtonStyle(
-                      shape: MaterialStateProperty.all(CircleBorder()),
+                      shape: MaterialStateProperty.all(RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50))),
                       padding: MaterialStateProperty.all(EdgeInsets.all(10)),
                     ),
-                    child: Icon(
-                      Icons.send,
-                      size: 20,
-                    ),
+                    child: Text("Send",
+                        style: TextStyle(fontWeight: FontWeight.w800)),
                   ),
                 ],
               ),
@@ -171,5 +211,14 @@ class _MessageScreenState extends State<MessageScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    if (socket != null) {
+      socket.close();
+      socket = null;
+    }
+    super.dispose();
   }
 }

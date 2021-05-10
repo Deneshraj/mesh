@@ -28,6 +28,7 @@ dependencies:
   http: ^0.13.1
   shared_preferences: ^2.0.5
   provider: ^5.0.0
+  socket_io_client: ^2.0.0-beta.2
 
 
   # The following adds the Cupertino Icons font to your application.

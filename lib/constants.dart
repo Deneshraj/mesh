@@ -15,3 +15,7 @@ const kDefaultPadding = 20.0;
 const host = "http://192.168.1.7";
 const port = 8000;
 const url = "$host:$port";
+
+const sioHost = "http://192.168.1.7";
+const sioPort = 3000;
+const sioUrl = "$sioHost:$sioPort";
