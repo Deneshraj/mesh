@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mesh/screens/messages/messages.dart';
 import 'dart:convert';
 
 import 'package:mesh/utils/requests.dart';
@@ -27,9 +28,12 @@ class _ChatsState extends State<Chats> {
         _friends = body['friends'];
         _isLoaded = true;
       });
+    } else {
+      setState(() {
+        _friends = [];
+        _isLoaded = true;
+      });
     }
-
-    return [];
   }
 
   @override
@@ -48,7 +52,16 @@ class _ChatsState extends State<Chats> {
 
             return InkWell(
               onTap: () {
-                print(index);
+                var friend = _friends[index];
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MessageScreen(
+                      username: friend['username'],
+                      id: friend['id'],
+                    ),
+                  ),
+                );
               },
               child: Container(
                 padding: EdgeInsets.all(10),
@@ -64,11 +77,13 @@ class _ChatsState extends State<Chats> {
                               _friends[index]['username']
                                   .toString()
                                   .substring(0, 2),
-                              style:
-                                  Theme.of(context).textTheme.headline6.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headline6
+                                  .copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                             ),
                           ),
                     SizedBox(width: 20),
@@ -84,7 +99,7 @@ class _ChatsState extends State<Chats> {
                           ),
                         ),
                         Text(
-                          "hey, how are you?",
+                          _friends[index]["recentMessage"],
                           style: TextStyle(
                             fontSize: 12,
                           ),

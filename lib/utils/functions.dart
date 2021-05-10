@@ -7,3 +7,14 @@ Future<String> getToken() async {
   } else
     return "";
 }
+
+Future<bool> sendAuthorizedReq({ Function func }) async {
+  String token = await getToken();
+
+  if (token.isNotEmpty) {
+    await func(token);
+    return true;
+  }
+
+  return false;
+}
