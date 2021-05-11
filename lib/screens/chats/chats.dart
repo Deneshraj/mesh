@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mesh/constants.dart';
+import 'package:mesh/models/active_socket.dart';
 import 'package:mesh/models/toggle_theme.dart';
 import 'package:mesh/screens/chats/components/chat_screen.dart';
 import 'package:mesh/screens/chats/components/settings_screen.dart';
@@ -37,7 +38,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
     }
   }
 
-  _isLoggedIn() async {
+  Future<void> _isLoggedIn(BuildContext context) async {
     String token = await getToken();
     if (token.isNotEmpty) {
       var response = await getReq(
@@ -56,7 +57,13 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    _isLoggedIn();
+    _isLoggedIn(context).then((_) async {
+      Provider.of<ActiveSocket>(context, listen: false).socket.emit('user:setActive', {
+        'token': await getToken()
+      });
+    }).catchError((err) {
+      print(err);
+    });
 
     ToggleTheme theme = Provider.of(context);
     var switchTheme = () {
@@ -115,14 +122,17 @@ class _ChatsScreenState extends State<ChatsScreen> {
         selectedFontSize: 12.0,
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: (_selectedIndex == 0) ? Icon(Icons.chat_bubble) : Icon(Icons.chat_bubble_outline),
+            icon: (_selectedIndex == 0)
+                ? Icon(Icons.chat_bubble)
+                : Icon(Icons.chat_bubble_outline),
             label: "Chats",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
             label: "Settings",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.login_outlined), label: "Logout"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.login_outlined), label: "Logout"),
           BottomNavigationBarItem(
             icon: (theme.light)
                 ? Icon(Icons.lightbulb)

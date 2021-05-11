@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mesh/models/active_socket.dart';
 import 'package:mesh/models/auth_token.dart';
 import 'package:mesh/models/toggle_theme.dart';
 import 'package:mesh/screens/auth/login_screen.dart';
@@ -31,6 +32,16 @@ class Mesh extends StatefulWidget {
 }
 
 class _MeshState extends State<Mesh> {
+  ActiveSocket _socket;
+
+  @override
+  void initState() {
+    super.initState();
+    setState(() {
+      _socket = ActiveSocket();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     AuthToken _authToken = AuthToken(widget.authToken);
@@ -40,7 +51,7 @@ class _MeshState extends State<Mesh> {
       child: Consumer<ToggleTheme>(
         builder: (context, ToggleTheme notifier, child) {
           ThemeMode mode = ThemeMode.light;
-          if(_theme != null) {
+          if (_theme != null) {
             mode = (_theme.light) ? ThemeMode.light : ThemeMode.dark;
           }
           return MaterialApp(
@@ -69,7 +80,18 @@ class _MeshState extends State<Mesh> {
         ChangeNotifierProvider<ToggleTheme>.value(
           value: _theme,
         ),
+        ChangeNotifierProvider<ActiveSocket>.value(
+          value: _socket,
+        ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    if (_socket != null) {
+      _socket.disposeSocket();
+    }
+    super.dispose();
   }
 }

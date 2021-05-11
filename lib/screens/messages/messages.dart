@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mesh/constants.dart';
+import 'package:mesh/models/active_socket.dart';
 import 'package:mesh/utils/functions.dart';
 import 'package:mesh/utils/requests.dart';
 import 'package:mesh/utils/snackbar.dart';
-import 'package:mesh/utils/stream_socket.dart';
+import 'package:provider/provider.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 
 class MessageScreen extends StatefulWidget {
@@ -23,27 +24,11 @@ class _MessageScreenState extends State<MessageScreen> {
   List _chats = [];
   bool _isLoaded = false;
   TextEditingController _inputController = TextEditingController();
-  Socket socket;
-  // StreamSocket _streamSocket = StreamSocket();
+  Socket _socket;
 
   @override
   void initState() {
     super.initState();
-    setState(() {
-      socket = _socketConn();
-    });
-  }
-
-  Socket _socketConn() {
-    Socket socket = io(sioUrl, <String, dynamic>{
-      "transports": ["websocket"],
-      "autoConnect": false,
-    });
-    socket.connect();
-    socket.onConnect((data) => print("Connected!"));
-    socket.onConnectTimeout((data) => print("Timeout! $data"));
-    socket.onDisconnect((data) => "Disconnecting...");
-    return socket;
   }
 
   _getChats() async {
@@ -57,11 +42,14 @@ class _MessageScreenState extends State<MessageScreen> {
           }),
         );
         var body = jsonDecode(response.body);
-        setState(() {
-          _chats = body['chats'];
-          _isLoaded = true;
-          _inputController.text = "";
-        });
+
+        if (_isLoaded == false) {
+          setState(() {
+            _chats = body['chats'];
+            _isLoaded = true;
+            _inputController.text = "";
+          });
+        }
       },
     );
 
@@ -70,29 +58,43 @@ class _MessageScreenState extends State<MessageScreen> {
         _chats = [];
       });
     }
+    return [];
   }
 
   _sendChat() async {
     if (_inputController.text.isNotEmpty) {
-      if (socket != null) {
-        socket.emit('addChat', _inputController.text);
-      }
-      // sendAuthorizedReq(
-      //   func: (token) async {
-      //     var response = await post(
-      //         Uri.parse("$url/api/chats/add/"),
-      //         token,
-      //         jsonEncode({
-      //           'message': _inputController.text,
-      //           'to_user': widget.id,
-      //         }));
-      //     var body = jsonDecode(response.body);
-      //     setState(() {
-      //       _chats.add(body['chat']);
-      //       _inputController.text = "";
-      //     });
-      //   },
-      // );
+      sendAuthorizedReq(
+        func: (token) async {
+          var response = await post(
+              Uri.parse("$url/api/chats/add/"),
+              token,
+              jsonEncode({
+                'message': _inputController.text,
+                'to_user': widget.id,
+              }));
+          if (response.statusCode == 200) {
+            var body = jsonDecode(response.body);
+            setState(() {
+              _chats.add(body['chat']);
+              _inputController.text = "";
+            });
+
+            if (_socket != null && body['active'] == true) {
+              _socket.emit(
+                'chat:notify',
+                {
+                  'sid': body['sid'],
+                  'data': body['chat'],
+                },
+              );
+            } else {
+              print("Socket is null!");
+            }
+          } else
+            showSnackbar(
+                context, "Something went wrong while sending message!");
+        },
+      );
     } else {
       showSnackbar(context, "Enter any message");
     }
@@ -100,6 +102,16 @@ class _MessageScreenState extends State<MessageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_socket == null) {
+      setState(() {
+        _socket = Provider.of<ActiveSocket>(context).socket;
+      });
+    }
+
+    _socket.on('chat:refresh', (data) {
+      print(data);
+    });
+
     if (_chats == null || _isLoaded == false) {
       _getChats();
     }
@@ -211,14 +223,5 @@ class _MessageScreenState extends State<MessageScreen> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    if (socket != null) {
-      socket.close();
-      socket = null;
-    }
-    super.dispose();
   }
 }
